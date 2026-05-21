@@ -11,6 +11,9 @@ mvn javafx:run
 # Compile only (no run)
 mvn compile
 
+# Run unit tests
+mvn test
+
 # Package macOS .app image
 ./scripts/package-app.sh
 
@@ -18,20 +21,21 @@ mvn compile
 ./scripts/package-dmg.sh
 ```
 
-There are no tests yet.
-
 ## Architecture
 
-This is a JavaFX 21 desktop app (Java 17+, Maven) with two features: a card-style digital clock and a to-do list. All UI is built programmatically in Java — there is no FXML.
+JavaFX 21 desktop app (Java 17+, Maven). All UI is programmatic — no FXML.
 
-**Entry point:** `MainApp.java` — extends `Application`, creates a `MainController`, wraps its view in a 760×480 `Scene`.
+**Entry point:** `MainApp.java` loads config from `~/.todo-flip-clock/config.properties` (theme, window position/size), creates `MainController` with theme preference, calls `controller.createScene()` which loads CSS, then shows the stage.
 
 **Layers:**
 
-- `controller/MainController.java` — owns a `BorderPane` root; builds clock (top) and todo (center) UI regions. Inner class `TodoItemCell` provides the custom `ListCell` rendering with checkbox + text + delete button, styled based on completion state.
-- `service/ClockService.java` — drives a `Timeline` at 1 Hz, updating a `ReadOnlyStringWrapper` with `HH:mm:ss` formatted time. Callers bind to `currentTimeProperty()`.
-- `service/TodoService.java` — wraps an `ObservableList<TodoItem>` and `TodoStorage`. Listens for list changes to auto-save. `toggleCompleted` saves explicitly since checkbox toggles mutate item state without triggering a list add/remove.
-- `model/TodoItem.java` — two JavaFX properties: `text` (StringProperty) and `completed` (BooleanProperty).
-- `storage/TodoStorage.java` — reads/writes `~/.todo-flip-clock/tasks.txt`. Format: one task per line, `completed|Base64(text)`. Base64 avoids delimiter/special-character issues. Corrupt lines are silently skipped.
-
-**Data flow:** `ClockService` → property binding → `MainController` clock labels update automatically. `TodoService` ↔ `ObservableList` ↔ `ListView` — the list stays in sync via JavaFX bindings; persistence happens on every mutation.
+- `controller/MainController.java` — top area has a Clock/Countdown toggle (`ToggleButton`) and theme toggle (☀/☾). Todo panel below with inline editing, priority ComboBox, DatePicker, drag reorder, right-click "Start 25-minute timer" context menu. Keyboard shortcuts: Ctrl+N (focus input), Ctrl+D (toggle theme), Delete (delete selected with confirmation). Inner `TodoItemCell` handles priority color bar, overdue date badges, inline edit, and drag-and-drop.
+- `controller/FlipClockPane.java` — split-flap clock with `FlipCard` inner class. Each card uses 4 clipped `Label`s in a `StackPane`, animated via `Timeline` + `Rotate` transforms (X-axis, 300ms). PerspectiveCamera for 3D depth.
+- `controller/CountdownPane.java` — preset time buttons (5/15/25/45/60m + custom input), styled time display, Start/Pause/Reset. `startForTask(name, mins)` called from todo context menu.
+- `service/ClockService.java` — 1 Hz `Timeline`, exposes `currentTimeProperty()` (HH:mm:ss) and `currentDateProperty()` (yyyy年MM月dd日 EEEE).
+- `service/CountdownService.java` — 1 Hz `Timeline`, `remainingTimeProperty()` (MM:SS), `isRunningProperty()`, plays system beep on completion. `setRemainingSeconds()` exposed for tests.
+- `service/TodoService.java` — `ObservableList<TodoItem>` with auto-save listener; `addTask()`, `toggleCompleted()`, `deleteTask()`, `moveTask()`, `save()`.
+- `model/TodoItem.java` — properties: text, completed, priority (HIGH/MEDIUM/LOW/NONE), dueDate (nullable LocalDate).
+- `storage/TodoStorage.java` — `~/.todo-flip-clock/tasks.txt`. Format: `completed|priority|dueDate|Base64(text)`. Backward-compatible with old 2-field format. Corrupt lines skipped.
+- **CSS:** `main.css` (all styles) + `dark.css` (dark overrides), loaded from `src/main/resources/styles/`. Theme toggling adds/removes dark.css from scene stylesheets.
+- **Tests:** JUnit 5, 62 tests across 5 test classes (`@TempDir` for file tests).

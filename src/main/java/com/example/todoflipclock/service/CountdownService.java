@@ -101,4 +101,10 @@ public class CountdownService {
         int s = remainingSeconds % 60;
         remainingTime.set(String.format("%02d:%02d", m, s));
     }
+
+    /** Exposed so tests can set a very short remaining time. */
+    void setRemainingSeconds(int seconds) {
+        remainingSeconds = seconds;
+        updateDisplay();
+    }
 }
