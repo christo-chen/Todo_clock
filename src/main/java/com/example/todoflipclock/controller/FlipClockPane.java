@@ -24,14 +24,6 @@ public class FlipClockPane extends VBox {
     private static final int BOT_Y = 55;
     private static final int BOT_H = 55;
 
-    private static final String CARD_STYLE = """
-        -fx-background-color: linear-gradient(to bottom, #111827 0%, #111827 49%, #0b1220 50%, #0b1220 100%);
-        -fx-text-fill: #f9fafb;
-        -fx-font-size: 52px;
-        -fx-font-family: 'Menlo', 'Consolas', monospace;
-        -fx-font-weight: bold;
-        """;
-
     private final ClockService clockService;
 
     public FlipClockPane(ClockService clockService) {
@@ -73,7 +65,7 @@ public class FlipClockPane extends VBox {
         row.getChildren().addAll(hourCard, colon(), minuteCard, colon(), secondCard);
 
         Label dateLabel = new Label();
-        dateLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #6b7280;");
+        dateLabel.getStyleClass().add("clock-date");
         dateLabel.textProperty().bind(clockService.currentDateProperty());
         VBox.setMargin(dateLabel, new Insets(10, 0, 0, 0));
 
@@ -82,7 +74,7 @@ public class FlipClockPane extends VBox {
 
     private static Label colon() {
         Label l = new Label(":");
-        l.setStyle("-fx-font-size: 48px; -fx-font-weight: bold; -fx-text-fill: #111827;");
+        l.getStyleClass().add("clock-colon");
         return l;
     }
 
@@ -105,22 +97,19 @@ public class FlipClockPane extends VBox {
         FlipCard() {
             setMinSize(CARD_W, CARD_H);
             setMaxSize(CARD_W, CARD_H);
-            // Dark background shows through the 1px divider gap
-            setStyle("-fx-background-color: #0b1220; -fx-background-radius: 8;");
+            getStyleClass().add("flip-card");
 
             topCurrent = cardLabel(topClip());
             bottomCurrent = cardLabel(bottomClip());
             topNext = cardLabel(topClip());
             bottomNext = cardLabel(bottomClip());
 
-            // Pivot at the horizontal center line so halves meet at the divider
             topCurrentRot = new Rotate(0, CARD_W / 2.0, TOP_H, 0, Rotate.X_AXIS);
             topCurrent.getTransforms().add(topCurrentRot);
 
             bottomNextRot = new Rotate(-90, CARD_W / 2.0, TOP_H, 0, Rotate.X_AXIS);
             bottomNext.getTransforms().add(bottomNextRot);
 
-            // Z-order (back → front): next-top, current-bottom, next-bottom, current-top
             getChildren().addAll(topNext, bottomCurrent, bottomNext, topCurrent);
         }
 
@@ -143,7 +132,7 @@ public class FlipClockPane extends VBox {
             l.setMinSize(CARD_W, CARD_H);
             l.setMaxSize(CARD_W, CARD_H);
             l.setAlignment(Pos.CENTER);
-            l.setStyle(CARD_STYLE);
+            l.getStyleClass().add("clock-card-label");
             l.setClip(clip);
             return l;
         }

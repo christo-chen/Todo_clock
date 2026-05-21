@@ -1,0 +1,171 @@
+/* dark.css — dark theme overrides */
+
+.root-bg {
+    -fx-background-color: #1f2937;
+}
+
+.todo-panel {
+    -fx-background-color: #374151;
+    -fx-border-color: #4b5563;
+}
+
+.todo-title {
+    -fx-text-fill: #f9fafb;
+}
+
+.tab-btn {
+    -fx-background-color: #374151;
+    -fx-text-fill: #9ca3af;
+}
+
+.tab-btn:selected {
+    -fx-background-color: #f9fafb;
+    -fx-text-fill: #111827;
+}
+
+.task-text {
+    -fx-text-fill: #f3f4f6;
+}
+
+.task-text-completed {
+    -fx-text-fill: #9ca3af;
+}
+
+.date-badge {
+    -fx-background-color: #4b5563;
+    -fx-text-fill: #d1d5db;
+}
+
+.date-badge-overdue {
+    -fx-background-color: #7f1d1d;
+    -fx-text-fill: #fca5a5;
+}
+
+.clock-colon {
+    -fx-text-fill: #f9fafb;
+}
+
+.clock-date {
+    -fx-text-fill: #9ca3af;
+}
+
+.countdown-task {
+    -fx-text-fill: #9ca3af;
+}
+
+.preset-btn:selected {
+    -fx-background-color: #f9fafb;
+    -fx-text-fill: #111827;
+}
+
+.empty-state {
+    -fx-text-fill: #6b7280;
+}
+
+/* === General control overrides for dark theme === */
+.list-view {
+    -fx-background-color: #374151;
+}
+
+.list-cell {
+    -fx-background-color: #374151;
+    -fx-text-fill: #f3f4f6;
+}
+
+.list-cell:filled:selected {
+    -fx-background-color: #4b5563;
+}
+
+.list-cell:filled:hover {
+    -fx-background-color: #4b5563;
+}
+
+.text-field {
+    -fx-background-color: #4b5563;
+    -fx-text-fill: #f3f4f6;
+    -fx-prompt-text-fill: #9ca3af;
+}
+
+.combo-box {
+    -fx-background-color: #4b5563;
+}
+
+.combo-box .list-cell {
+    -fx-text-fill: #f3f4f6;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #4b5563;
+}
+
+.combo-box-popup .list-cell {
+    -fx-background-color: #4b5563;
+    -fx-text-fill: #f3f4f6;
+}
+
+.combo-box-popup .list-cell:hover {
+    -fx-background-color: #6b7280;
+}
+
+.date-picker {
+    -fx-background-color: #4b5563;
+}
+
+.date-picker .text-field {
+    -fx-background-color: #4b5563;
+}
+
+.button {
+    -fx-background-color: #4b5563;
+    -fx-text-fill: #f3f4f6;
+}
+
+.button:hover {
+    -fx-background-color: #6b7280;
+}
+
+.button:default {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: white;
+}
+
+.toggle-button {
+    -fx-background-color: #374151;
+    -fx-text-fill: #9ca3af;
+}
+
+.toggle-button:selected {
+    -fx-background-color: #f9fafb;
+    -fx-text-fill: #111827;
+}
+
+.check-box {
+    -fx-text-fill: #f3f4f6;
+}
+
+.context-menu {
+    -fx-background-color: #374151;
+    -fx-border-color: #4b5563;
+}
+
+.menu-item .label {
+    -fx-text-fill: #f3f4f6;
+}
+
+.menu-item:focused {
+    -fx-background-color: #4b5563;
+}
+
+/* === Alert dialogs in dark theme === */
+.dialog-pane {
+    -fx-background-color: #374151;
+}
+
+.dialog-pane .label {
+    -fx-text-fill: #f3f4f6;
+}
+
+.dialog-pane .button {
+    -fx-background-color: #4b5563;
+    -fx-text-fill: #f3f4f6;
+}

@@ -8,8 +8,10 @@ import com.example.todoflipclock.storage.TodoStorage;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
@@ -24,6 +26,8 @@ import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCombination;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -46,28 +50,53 @@ public class MainController {
     private final TodoService todoService = new TodoService(new TodoStorage());
     private final BorderPane root = new BorderPane();
 
-    // Top area — toggle between clock and countdown
+    // Top area
     private final FlipClockPane flipClockPane;
     private final CountdownPane countdownPane;
     private final ToggleButton clockTab = new ToggleButton("Clock");
     private final ToggleButton countdownTab = new ToggleButton("Countdown");
+    private final Button themeBtn = new Button();
 
     // Input row state
     private final ComboBox<TodoItem.Priority> priorityCombo = new ComboBox<>();
     private final DatePicker datePicker = new DatePicker();
 
-    public MainController() {
+    // Captured for keyboard shortcuts
+    private TextField taskInput;
+    private ListView<TodoItem> listView;
+
+    // Theme
+    private boolean darkTheme;
+
+    public MainController(boolean darkTheme) {
+        this.darkTheme = darkTheme;
         flipClockPane = new FlipClockPane(clockService);
         countdownPane = new CountdownPane(countdownService);
         buildUi();
     }
 
-    public Parent getView() {
-        return root;
+    public Scene createScene() {
+        Scene scene = new Scene(root, 760, 480);
+        scene.getStylesheets().add(
+                getClass().getResource("/styles/main.css").toExternalForm());
+        if (darkTheme) {
+            scene.getStylesheets().add(
+                    getClass().getResource("/styles/dark.css").toExternalForm());
+        }
+        setupKeyboardShortcuts(scene);
+        return scene;
     }
 
+    public boolean isDarkTheme() {
+        return darkTheme;
+    }
+
+    // -----------------------------------------------------------------------
+    // UI construction
+    // -----------------------------------------------------------------------
+
     private void buildUi() {
-        root.setStyle("-fx-background-color: #f3f4f6;");
+        root.getStyleClass().add("root-bg");
         root.setPadding(new Insets(24));
         root.setTop(buildTopArea());
         root.setCenter(createTodoView());
@@ -79,7 +108,7 @@ public class MainController {
     }
 
     // -----------------------------------------------------------------------
-    // Top area — toggle bar + display stack
+    // Top area — toggle bar + theme button + display stack
     // -----------------------------------------------------------------------
 
     private VBox buildTopArea() {
@@ -88,37 +117,29 @@ public class MainController {
         countdownTab.setToggleGroup(tg);
         clockTab.setSelected(true);
 
-        String tabBase = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 6 18;"
-                + " -fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 0;";
-        String tabActive = tabBase
-                + "-fx-background-color: #111827; -fx-text-fill: white;";
-        String tabInactive = tabBase
-                + "-fx-background-color: #e5e7eb; -fx-text-fill: #6b7280;";
-
-        clockTab.setStyle(tabActive);
-        countdownTab.setStyle(tabInactive);
+        clockTab.getStyleClass().add("tab-btn");
+        countdownTab.getStyleClass().add("tab-btn");
 
         clockTab.setOnAction(e -> {
-            if (clockTab.isSelected()) {
-                showClock();
-                clockTab.setStyle(tabActive);
-                countdownTab.setStyle(tabInactive);
-            }
+            if (clockTab.isSelected()) showClock();
         });
         countdownTab.setOnAction(e -> {
-            if (countdownTab.isSelected()) {
-                showCountdown();
-                countdownTab.setStyle(tabActive);
-                clockTab.setStyle(tabInactive);
-            }
+            if (countdownTab.isSelected()) showCountdown();
         });
 
-        HBox toggleBar = new HBox(8, clockTab, countdownTab);
-        toggleBar.setAlignment(Pos.CENTER);
+        themeBtn.getStyleClass().add("theme-btn");
+        updateThemeIcon();
+        themeBtn.setOnAction(e -> toggleTheme());
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox toggleBar = new HBox(8, clockTab, countdownTab, spacer, themeBtn);
+        toggleBar.setAlignment(Pos.CENTER_LEFT);
         toggleBar.setPadding(new Insets(0, 0, 16, 0));
 
         StackPane displayStack = new StackPane(flipClockPane, countdownPane);
-        showClock(); // initial state
+        showClock();
 
         VBox top = new VBox(toggleBar, displayStack);
         top.setAlignment(Pos.CENTER);
@@ -142,14 +163,73 @@ public class MainController {
     private void switchToCountdown() {
         countdownTab.setSelected(true);
         showCountdown();
-        String tabActive = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 6 18;"
-                + "-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 0;"
-                + "-fx-background-color: #111827; -fx-text-fill: white;";
-        String tabInactive = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 6 18;"
-                + "-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 0;"
-                + "-fx-background-color: #e5e7eb; -fx-text-fill: #6b7280;";
-        countdownTab.setStyle(tabActive);
-        clockTab.setStyle(tabInactive);
+    }
+
+    // -----------------------------------------------------------------------
+    // Theme toggle
+    // -----------------------------------------------------------------------
+
+    private void toggleTheme() {
+        darkTheme = !darkTheme;
+        Scene scene = root.getScene();
+        if (scene == null) return;
+
+        String darkCss = getClass().getResource("/styles/dark.css").toExternalForm();
+        if (darkTheme) {
+            scene.getStylesheets().add(darkCss);
+        } else {
+            scene.getStylesheets().remove(darkCss);
+        }
+        updateThemeIcon();
+    }
+
+    private void updateThemeIcon() {
+        themeBtn.setText(darkTheme ? "☀" : "☾");
+    }
+
+    // -----------------------------------------------------------------------
+    // Keyboard shortcuts
+    // -----------------------------------------------------------------------
+
+    private void setupKeyboardShortcuts(Scene scene) {
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            // Ctrl/Cmd+N — focus task input
+            if (event.getCode() == KeyCode.N && event.isShortcutDown()) {
+                if (taskInput != null) {
+                    taskInput.requestFocus();
+                    event.consume();
+                }
+            }
+            // Ctrl/Cmd+D — toggle theme
+            else if (event.getCode() == KeyCode.D && event.isShortcutDown()) {
+                toggleTheme();
+                event.consume();
+            }
+            // Delete / Backspace — delete selected task (when list is focused)
+            else if ((event.getCode() == KeyCode.DELETE
+                    || event.getCode() == KeyCode.BACK_SPACE)
+                    && listView != null
+                    && listView.isFocused()
+                    && !(event.getTarget() instanceof TextField)) {
+                deleteSelectedTask();
+                event.consume();
+            }
+        });
+    }
+
+    private void deleteSelectedTask() {
+        if (listView == null) return;
+        TodoItem selected = listView.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "", ButtonType.YES, ButtonType.NO);
+        confirm.setTitle("Delete Task");
+        confirm.setHeaderText("Delete \"" + selected.getText() + "\"?");
+        confirm.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.YES) {
+                todoService.deleteTask(selected);
+            }
+        });
     }
 
     // -----------------------------------------------------------------------
@@ -159,15 +239,15 @@ public class MainController {
     private VBox createTodoView() {
         VBox panel = new VBox(14);
         panel.setPadding(new Insets(20));
-        panel.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-border-color: #e5e7eb; -fx-border-radius: 8;");
+        panel.getStyleClass().add("todo-panel");
 
         Label title = new Label("Tasks");
-        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #111827;");
+        title.getStyleClass().add("todo-title");
 
         HBox inputRow = createInputRow();
 
-        ListView<TodoItem> listView = new ListView<>(todoService.getItems());
-        listView.setPlaceholder(new Label("No tasks yet."));
+        listView = new ListView<>(todoService.getItems());
+        listView.setPlaceholder(createEmptyPlaceholder());
         listView.setCellFactory(view -> new TodoItemCell(todoService, listView, this::onStartTaskTimer));
         VBox.setVgrow(listView, Priority.ALWAYS);
 
@@ -175,25 +255,34 @@ public class MainController {
         return panel;
     }
 
+    private VBox createEmptyPlaceholder() {
+        VBox box = new VBox(8);
+        box.setAlignment(Pos.CENTER);
+        Label icon = new Label("📋");
+        icon.getStyleClass().add("empty-state-icon");
+        Label text = new Label("No tasks yet.\nPress Ctrl+N to add one.");
+        text.getStyleClass().add("empty-state");
+        box.getChildren().addAll(icon, text);
+        return box;
+    }
+
     // -----------------------------------------------------------------------
     // Input row
     // -----------------------------------------------------------------------
 
     private HBox createInputRow() {
-        TextField input = new TextField();
-        input.setPromptText("Add a task");
-        input.setPrefHeight(40);
-        HBox.setHgrow(input, Priority.ALWAYS);
+        taskInput = new TextField();
+        taskInput.setPromptText("Add a task");
+        taskInput.getStyleClass().add("todo-input");
+        HBox.setHgrow(taskInput, Priority.ALWAYS);
 
         priorityCombo.getItems().setAll(TodoItem.Priority.values());
         priorityCombo.setValue(TodoItem.Priority.NONE);
-        priorityCombo.setPrefWidth(95);
-        priorityCombo.setPrefHeight(40);
+        priorityCombo.getStyleClass().add("priority-combo");
         priorityCombo.setButtonCell(new PriorityListCell());
         priorityCombo.setCellFactory(p -> new PriorityListCell());
 
-        datePicker.setPrefWidth(130);
-        datePicker.setPrefHeight(40);
+        datePicker.getStyleClass().add("date-picker");
         datePicker.setPromptText("Due date");
         datePicker.setEditable(false);
         datePicker.setConverter(new StringConverter<>() {
@@ -209,19 +298,19 @@ public class MainController {
         });
 
         Button addButton = new Button("Add");
-        addButton.setPrefHeight(40);
+        addButton.getStyleClass().add("add-btn");
         addButton.setDefaultButton(true);
-        addButton.setOnAction(e -> commitAdd(input));
-        input.setOnAction(e -> commitAdd(input));
+        addButton.setOnAction(e -> commitAdd());
+        taskInput.setOnAction(e -> commitAdd());
 
-        return new HBox(8, input, priorityCombo, datePicker, addButton);
+        return new HBox(8, taskInput, priorityCombo, datePicker, addButton);
     }
 
-    private void commitAdd(TextField input) {
-        String text = input.getText();
+    private void commitAdd() {
+        String text = taskInput.getText();
         if (text.trim().isEmpty()) return;
         todoService.addTask(text, priorityCombo.getValue(), datePicker.getValue());
-        input.clear();
+        taskInput.clear();
         priorityCombo.setValue(TodoItem.Priority.NONE);
         datePicker.setValue(null);
     }
@@ -267,12 +356,12 @@ public class MainController {
             textLabel.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(textLabel, Priority.ALWAYS);
 
-            editField.setPrefHeight(30);
+            editField.getStyleClass().add("edit-field");
             editField.setVisible(false);
             editField.setManaged(false);
             HBox.setHgrow(editField, Priority.ALWAYS);
 
-            dateLabel.setStyle("-fx-font-size: 11px; -fx-padding: 2 6; -fx-background-radius: 4;");
+            deleteButton.getStyleClass().add("delete-btn");
 
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -409,22 +498,18 @@ public class MainController {
                 getListView().refresh();
             });
 
-            // Text
+            // Text with CSS classes
             textLabel.setText(item.getText());
-            textLabel.setStyle(item.isCompleted()
-                    ? "-fx-text-fill: #6b7280; -fx-strikethrough: true;"
-                    : "-fx-text-fill: #111827;");
+            textLabel.getStyleClass().removeAll("task-text", "task-text-completed");
+            textLabel.getStyleClass().add(item.isCompleted() ? "task-text-completed" : "task-text");
 
             // Due date
             LocalDate due = item.getDueDate();
             if (due != null) {
                 dateLabel.setText(due.format(DATE_FMT));
                 boolean overdue = !item.isCompleted() && due.isBefore(LocalDate.now());
-                dateLabel.setStyle(overdue
-                        ? "-fx-font-size: 11px; -fx-padding: 2 6; -fx-background-radius: 4;"
-                          + " -fx-background-color: #fef2f2; -fx-text-fill: #dc2626; -fx-font-weight: bold;"
-                        : "-fx-font-size: 11px; -fx-padding: 2 6; -fx-background-radius: 4;"
-                          + " -fx-background-color: #f3f4f6; -fx-text-fill: #6b7280;");
+                dateLabel.getStyleClass().removeAll("date-badge", "date-badge-overdue");
+                dateLabel.getStyleClass().add(overdue ? "date-badge-overdue" : "date-badge");
                 dateLabel.setVisible(true);
                 dateLabel.setManaged(true);
             } else {
@@ -466,12 +551,12 @@ public class MainController {
                 case LOW -> "● Low";
                 case NONE -> "None";
             });
-            l.setStyle("-fx-text-fill: " + switch (item) {
-                case HIGH -> "#ef4444";
-                case MEDIUM -> "#f59e0b";
-                case LOW -> "#3b82f6";
-                case NONE -> "#6b7280";
-            } + "; -fx-font-weight: bold; -fx-font-size: 13px;");
+            l.getStyleClass().add(switch (item) {
+                case HIGH -> "priority-high";
+                case MEDIUM -> "priority-medium";
+                case LOW -> "priority-low";
+                case NONE -> "priority-none";
+            });
             setText(null);
             setGraphic(l);
         }
