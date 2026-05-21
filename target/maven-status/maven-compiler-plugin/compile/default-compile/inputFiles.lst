@@ -1,0 +1,7 @@
+/Users/cwz/Todo_clock/src/main/java/com/example/todoflipclock/MainApp.java
+/Users/cwz/Todo_clock/src/main/java/com/example/todoflipclock/controller/FlipClockPane.java
+/Users/cwz/Todo_clock/src/main/java/com/example/todoflipclock/controller/MainController.java
+/Users/cwz/Todo_clock/src/main/java/com/example/todoflipclock/model/TodoItem.java
+/Users/cwz/Todo_clock/src/main/java/com/example/todoflipclock/service/ClockService.java
+/Users/cwz/Todo_clock/src/main/java/com/example/todoflipclock/service/TodoService.java
+/Users/cwz/Todo_clock/src/main/java/com/example/todoflipclock/storage/TodoStorage.java

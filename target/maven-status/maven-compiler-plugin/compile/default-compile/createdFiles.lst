@@ -1,0 +1,9 @@
+com/example/todoflipclock/model/TodoItem.class
+com/example/todoflipclock/service/TodoService.class
+com/example/todoflipclock/controller/MainController.class
+com/example/todoflipclock/controller/FlipClockPane.class
+com/example/todoflipclock/controller/FlipClockPane$FlipCard.class
+com/example/todoflipclock/service/ClockService.class
+com/example/todoflipclock/storage/TodoStorage.class
+com/example/todoflipclock/MainApp.class
+com/example/todoflipclock/controller/MainController$TodoItemCell.class
