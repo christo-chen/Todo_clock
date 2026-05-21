@@ -2,6 +2,7 @@ package com.example.todoflipclock.controller;
 
 import com.example.todoflipclock.model.TodoItem;
 import com.example.todoflipclock.service.ClockService;
+import com.example.todoflipclock.service.CountdownService;
 import com.example.todoflipclock.service.TodoService;
 import com.example.todoflipclock.storage.TodoStorage;
 import javafx.application.Platform;
@@ -11,11 +12,15 @@ import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
@@ -24,6 +29,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -36,14 +42,23 @@ public class MainController {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM/dd");
 
     private final ClockService clockService = new ClockService();
+    private final CountdownService countdownService = new CountdownService();
     private final TodoService todoService = new TodoService(new TodoStorage());
     private final BorderPane root = new BorderPane();
+
+    // Top area — toggle between clock and countdown
+    private final FlipClockPane flipClockPane;
+    private final CountdownPane countdownPane;
+    private final ToggleButton clockTab = new ToggleButton("Clock");
+    private final ToggleButton countdownTab = new ToggleButton("Countdown");
 
     // Input row state
     private final ComboBox<TodoItem.Priority> priorityCombo = new ComboBox<>();
     private final DatePicker datePicker = new DatePicker();
 
     public MainController() {
+        flipClockPane = new FlipClockPane(clockService);
+        countdownPane = new CountdownPane(countdownService);
         buildUi();
     }
 
@@ -54,10 +69,87 @@ public class MainController {
     private void buildUi() {
         root.setStyle("-fx-background-color: #f3f4f6;");
         root.setPadding(new Insets(24));
-        root.setTop(new FlipClockPane(clockService));
+        root.setTop(buildTopArea());
         root.setCenter(createTodoView());
 
-        Platform.runLater(() -> root.getScene().getWindow().setOnCloseRequest(event -> clockService.stop()));
+        Platform.runLater(() -> root.getScene().getWindow().setOnCloseRequest(event -> {
+            clockService.stop();
+            countdownService.stop();
+        }));
+    }
+
+    // -----------------------------------------------------------------------
+    // Top area — toggle bar + display stack
+    // -----------------------------------------------------------------------
+
+    private VBox buildTopArea() {
+        ToggleGroup tg = new ToggleGroup();
+        clockTab.setToggleGroup(tg);
+        countdownTab.setToggleGroup(tg);
+        clockTab.setSelected(true);
+
+        String tabBase = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 6 18;"
+                + " -fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 0;";
+        String tabActive = tabBase
+                + "-fx-background-color: #111827; -fx-text-fill: white;";
+        String tabInactive = tabBase
+                + "-fx-background-color: #e5e7eb; -fx-text-fill: #6b7280;";
+
+        clockTab.setStyle(tabActive);
+        countdownTab.setStyle(tabInactive);
+
+        clockTab.setOnAction(e -> {
+            if (clockTab.isSelected()) {
+                showClock();
+                clockTab.setStyle(tabActive);
+                countdownTab.setStyle(tabInactive);
+            }
+        });
+        countdownTab.setOnAction(e -> {
+            if (countdownTab.isSelected()) {
+                showCountdown();
+                countdownTab.setStyle(tabActive);
+                clockTab.setStyle(tabInactive);
+            }
+        });
+
+        HBox toggleBar = new HBox(8, clockTab, countdownTab);
+        toggleBar.setAlignment(Pos.CENTER);
+        toggleBar.setPadding(new Insets(0, 0, 16, 0));
+
+        StackPane displayStack = new StackPane(flipClockPane, countdownPane);
+        showClock(); // initial state
+
+        VBox top = new VBox(toggleBar, displayStack);
+        top.setAlignment(Pos.CENTER);
+        return top;
+    }
+
+    private void showClock() {
+        flipClockPane.setVisible(true);
+        flipClockPane.setManaged(true);
+        countdownPane.setVisible(false);
+        countdownPane.setManaged(false);
+    }
+
+    private void showCountdown() {
+        flipClockPane.setVisible(false);
+        flipClockPane.setManaged(false);
+        countdownPane.setVisible(true);
+        countdownPane.setManaged(true);
+    }
+
+    private void switchToCountdown() {
+        countdownTab.setSelected(true);
+        showCountdown();
+        String tabActive = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 6 18;"
+                + "-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 0;"
+                + "-fx-background-color: #111827; -fx-text-fill: white;";
+        String tabInactive = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 6 18;"
+                + "-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 0;"
+                + "-fx-background-color: #e5e7eb; -fx-text-fill: #6b7280;";
+        countdownTab.setStyle(tabActive);
+        clockTab.setStyle(tabInactive);
     }
 
     // -----------------------------------------------------------------------
@@ -76,7 +168,7 @@ public class MainController {
 
         ListView<TodoItem> listView = new ListView<>(todoService.getItems());
         listView.setPlaceholder(new Label("No tasks yet."));
-        listView.setCellFactory(view -> new TodoItemCell(todoService, listView));
+        listView.setCellFactory(view -> new TodoItemCell(todoService, listView, this::onStartTaskTimer));
         VBox.setVgrow(listView, Priority.ALWAYS);
 
         panel.getChildren().addAll(title, inputRow, listView);
@@ -84,7 +176,7 @@ public class MainController {
     }
 
     // -----------------------------------------------------------------------
-    // Input row — text field + priority combo + date picker + add button
+    // Input row
     // -----------------------------------------------------------------------
 
     private HBox createInputRow() {
@@ -119,9 +211,7 @@ public class MainController {
         Button addButton = new Button("Add");
         addButton.setPrefHeight(40);
         addButton.setDefaultButton(true);
-        addButton.setOnAction(e -> {
-            commitAdd(input);
-        });
+        addButton.setOnAction(e -> commitAdd(input));
         input.setOnAction(e -> commitAdd(input));
 
         return new HBox(8, input, priorityCombo, datePicker, addButton);
@@ -137,12 +227,22 @@ public class MainController {
     }
 
     // -----------------------------------------------------------------------
+    // Countdown from todo
+    // -----------------------------------------------------------------------
+
+    private void onStartTaskTimer(TodoItem item) {
+        countdownPane.startForTask(item.getText(), 25);
+        switchToCountdown();
+    }
+
+    // -----------------------------------------------------------------------
     // List cell
     // -----------------------------------------------------------------------
 
     private static class TodoItemCell extends ListCell<TodoItem> {
         private final TodoService todoService;
         private final ListView<TodoItem> listView;
+        private final java.util.function.Consumer<TodoItem> onStartTimer;
         private final HBox row = new HBox(8);
         private final Rectangle priorityBar = new Rectangle(4, 34);
         private final CheckBox completedBox = new CheckBox();
@@ -153,9 +253,11 @@ public class MainController {
 
         private boolean editing;
 
-        TodoItemCell(TodoService todoService, ListView<TodoItem> listView) {
+        TodoItemCell(TodoService todoService, ListView<TodoItem> listView,
+                     java.util.function.Consumer<TodoItem> onStartTimer) {
             this.todoService = todoService;
             this.listView = listView;
+            this.onStartTimer = onStartTimer;
             row.setAlignment(Pos.CENTER_LEFT);
             row.setPadding(new Insets(4, 2, 4, 2));
 
@@ -332,6 +434,13 @@ public class MainController {
 
             // Delete
             deleteButton.setOnAction(event -> todoService.deleteTask(item));
+
+            // Right-click context menu
+            MenuItem timerItem = new MenuItem("Start 25-minute timer");
+            timerItem.setOnAction(e -> onStartTimer.accept(item));
+            ContextMenu menu = new ContextMenu(timerItem);
+            row.setOnContextMenuRequested(e ->
+                    menu.show(row, e.getScreenX(), e.getScreenY()));
 
             setText(null);
             setGraphic(row);
